@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1066238274965",
+    "project_id": "my-memory-game-f60aa",
+    "storage_bucket": "my-memory-game-f60aa.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1066238274965:android:66a005949117fc9d049a9c",
+        "android_client_info": {
+          "package_name": "com.example.instaclone"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApZiE7iRwcY98e9gUiwlSi32rcY36lHf4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1066238274965:android:57a9b51adf942982049a9c",
+        "android_client_info": {
+          "package_name": "com.kroulikjaroslav.mymemory"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApZiE7iRwcY98e9gUiwlSi32rcY36lHf4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
