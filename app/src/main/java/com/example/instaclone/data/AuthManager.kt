@@ -269,11 +269,19 @@ class AuthManager(val client: io.appwrite.Client) { // Add 'val' here to make it
                 documentId = userId
             )
 
+            val followersRaw = document.data["followers"] as? List<*>
+            val followersList = followersRaw?.mapNotNull { it?.toString() } ?: emptyList()
+
+            val followingRaw = document.data["following"] as? List<*>
+            val followingList = followingRaw?.mapNotNull { it?.toString() } ?: emptyList()
+
             UserProfile(
                 userId = document.data["userId"].toString(),
                 username = document.data["username"].toString(),
                 bio = document.data["bio"].toString(),
-                profileImageUrl = document.data["profileImageUrl"].toString()
+                profileImageUrl = document.data["profileImageUrl"].toString(),
+                followers = followersList,
+                following = followingList
             )
         } catch (e: Exception) {
             Log.e("AUTH_DEBUG", "Error fetching profile: ${e.message}")
@@ -422,4 +430,71 @@ class AuthManager(val client: io.appwrite.Client) { // Add 'val' here to make it
             false
         }
     }
+
+    suspend fun followUser(targetUserId: String): Boolean {
+        return try {
+            val myId = currentUserId.ifEmpty { account.get().id }
+            if (myId.isEmpty() || myId == targetUserId) return false
+
+            val myDoc = databases.getDocument(AppwriteConstants.DATABASE_ID, "users", myId)
+            val myFollowing = (myDoc.data["following"] as? List<*>)?.mapNotNull { it?.toString() }?.toMutableList() ?: mutableListOf()
+            if (!myFollowing.contains(targetUserId)) myFollowing.add(targetUserId)
+
+            databases.updateDocument(
+                databaseId = AppwriteConstants.DATABASE_ID,
+                collectionId = "users",
+                documentId = myId,
+                data = mapOf("following" to myFollowing)
+            )
+
+            val targetDoc = databases.getDocument(AppwriteConstants.DATABASE_ID, "users", targetUserId)
+            val targetFollowers = (targetDoc.data["followers"] as? List<*>)?.mapNotNull { it?.toString() }?.toMutableList() ?: mutableListOf()
+            if (!targetFollowers.contains(myId)) targetFollowers.add(myId)
+
+            databases.updateDocument(
+                databaseId = AppwriteConstants.DATABASE_ID,
+                collectionId = "users",
+                documentId = targetUserId,
+                data = mapOf("followers" to targetFollowers)
+            )
+            true
+        } catch (e: Exception) {
+            Log.e("AuthManager", "Follow failed: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun unfollowUser(targetUserId: String): Boolean {
+        return try {
+            val myId = currentUserId.ifEmpty { account.get().id }
+            if (myId.isEmpty() || myId == targetUserId) return false
+
+            val myDoc = databases.getDocument(AppwriteConstants.DATABASE_ID, "users", myId)
+            val myFollowing = (myDoc.data["following"] as? List<*>)?.mapNotNull { it?.toString() }?.toMutableList() ?: mutableListOf()
+            myFollowing.remove(targetUserId)
+
+            databases.updateDocument(
+                databaseId = AppwriteConstants.DATABASE_ID,
+                collectionId = "users",
+                documentId = myId,
+                data = mapOf("following" to myFollowing)
+            )
+
+            val targetDoc = databases.getDocument(AppwriteConstants.DATABASE_ID, "users", targetUserId)
+            val targetFollowers = (targetDoc.data["followers"] as? List<*>)?.mapNotNull { it?.toString() }?.toMutableList()?.toMutableList() ?: mutableListOf()
+            targetFollowers.remove(myId)
+
+            databases.updateDocument(
+                databaseId = AppwriteConstants.DATABASE_ID,
+                collectionId = "users",
+                documentId = targetUserId,
+                data = mapOf("followers" to targetFollowers)
+            )
+            true
+        } catch (e: Exception) {
+            Log.e("AuthManager", "Unfollow failed: ${e.message}")
+            false
+        }
+    }
+
 }

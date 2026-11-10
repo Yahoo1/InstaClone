@@ -12,9 +12,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -222,13 +225,16 @@ fun ProfileScreen(
                 item(span = { GridItemSpan(3) }) {
                     ProfileHeader(
                         userName = userName,
-                        //bio = viewModel.bio,
                         bio = userBio,
-                        //profileImageUrl = viewModel.profileImageUrl,
                         profileImageUrl = userProfileImageUrl,
                         isUpdating = viewModel.isUpdating,
                         authManager = authManager,
-                        isSelf = isSelf, // Pass this flag
+                        isSelf = isSelf,
+                        postsCount = userPosts.size,
+                        followersCount = viewModel.followersCount,
+                        followingCount = viewModel.followingCount,
+                        isFollowing = viewModel.isFollowing,
+                        onToggleFollow = { viewModel.toggleFollow() },
                         onAvatarClick = {
                             photoPickerLauncher.launch(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -284,6 +290,11 @@ fun ProfileHeader(
     isUpdating: Boolean,
     authManager: AuthManager, // Add this to listen to the live state
     isSelf: Boolean, // Add this parameter
+    postsCount: Int,
+    followersCount: Int,
+    followingCount: Int,
+    isFollowing: Boolean,
+    onToggleFollow: () -> Unit,
     onAvatarClick: () -> Unit
 ) {
     // 1. Prioritize the live URL from AuthManager if it exists
@@ -363,6 +374,35 @@ fun ProfileHeader(
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray
         )
+
+        // --- STATS ROW (Posts, Followers, Following) ---
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ProfileStats(number = "$postsCount", label = "Posts")
+            ProfileStats(number = "$followersCount", label = "Followers")
+            ProfileStats(number = "$followingCount", label = "Following")
+        }
+
+        // --- FOLLOW BUTTON (Only shown when viewing other users) ---
+        if (!isSelf) {
+            Spacer(modifier = Modifier.height(12.dp))
+            androidx.compose.material3.Button(
+                onClick = onToggleFollow,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = if (isFollowing) Color.LightGray else MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text(
+                    text = if (isFollowing) "Following" else "Follow",
+                    color = if (isFollowing) Color.Black else Color.White
+                )
+            }
+        }
 
         // The Progress Bar
         if (isUpdating) {

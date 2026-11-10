@@ -27,6 +27,9 @@ class ProfileViewModel(private val authManager: AuthManager,
         loadUserProfile()
     }
 
+    var followersCount by mutableStateOf(0)
+    var followingCount by mutableStateOf(0)
+    var isFollowing by mutableStateOf(false)
     private fun loadUserProfile() {
         viewModelScope.launch {
             val userIdToLoad = targetUserId.ifBlank { authManager.currentUserId } //if (targetUserId.isBlank()) authManager.currentUserId else targetUserId
@@ -35,6 +38,9 @@ class ProfileViewModel(private val authManager: AuthManager,
                 username = it.username
                 bio = it.bio
                 profileImageUrl = it.profileImageUrl
+                followersCount = it.followers.size
+                followingCount = it.following.size
+                isFollowing = it.followers.contains(authManager.currentUserId)
             }
         }
     }
@@ -63,6 +69,26 @@ class ProfileViewModel(private val authManager: AuthManager,
             isUpdating = false
         }
     }
+
+    fun toggleFollow() {
+        viewModelScope.launch {
+            if (targetUserId.isBlank() || targetUserId == authManager.currentUserId) return@launch
+            if (isFollowing) {
+                val success = authManager.unfollowUser(targetUserId)
+                if (success) {
+                    isFollowing = false
+                    followersCount = (followersCount - 1).coerceAtLeast(0)
+                }
+            } else {
+                val success = authManager.followUser(targetUserId)
+                if (success) {
+                    isFollowing = true
+                    followersCount += 1
+                }
+            }
+        }
+    }
+
 }
 
 // Add this inside your ProfileViewModel.kt file at the bottom (outside the class)

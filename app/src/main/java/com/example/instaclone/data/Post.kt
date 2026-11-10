@@ -20,7 +20,9 @@ data class UserProfile(
     val userId: String,
     val username: String,
     val bio: String,
-    val profileImageUrl: String
+    val profileImageUrl: String,
+    val followers: List<String> = emptyList(),
+    val following: List<String> = emptyList()
 )
 
 data class Comment(
