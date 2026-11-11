@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -46,6 +47,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +67,8 @@ import com.example.instaclone.Screen
 import com.example.instaclone.data.AuthManager
 import com.example.instaclone.data.ProfileViewModel
 import com.example.instaclone.data.UploadManager
+import com.example.instaclone.utils.GithubRelease
+import com.example.instaclone.utils.GithubUpdateChecker
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -297,6 +301,11 @@ fun ProfileHeader(
     onToggleFollow: () -> Unit,
     onAvatarClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateResultDialog by remember { mutableStateOf<GithubRelease?>(null) }
+
     // 1. Prioritize the live URL from AuthManager if it exists
     // Only use liveUrl if this is YOUR own profile (isSelf)
     val liveUrl = if (isSelf) authManager.myLatestAvatarUrl else null
@@ -403,6 +412,41 @@ fun ProfileHeader(
                 )
             }
         }
+
+        // --- CHECK FOR UPDATES BUTTON (Only visible on your own profile) ---
+        if (isSelf) {
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = {
+                    scope.launch {
+                        isCheckingUpdate = true
+                        val release = GithubUpdateChecker.checkForUpdate(context)
+                        isCheckingUpdate = false
+                        if (release != null) {
+                            updateResultDialog = release
+                        } else {
+                            Toast.makeText(context, "You are on the latest version! ✨", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            ) {
+                if (isCheckingUpdate) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text("Check for App Updates")
+            }
+        }
+
+        // Show update dialog if manual check found an update
+        updateResultDialog?.let { release ->
+            UpdateDialog(
+                release = release,
+                onDismiss = { updateResultDialog = null }
+            )
+        }
+
 
         // The Progress Bar
         if (isUpdating) {

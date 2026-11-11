@@ -40,6 +40,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,8 +75,12 @@ import com.example.instaclone.ui.theme.screens.PostDetailScreen
 import com.example.instaclone.ui.theme.screens.ProfileScreen
 import com.example.instaclone.ui.theme.screens.RegisterScreen
 import com.example.instaclone.ui.theme.screens.SearchScreen
+import com.example.instaclone.ui.theme.screens.UpdateDialog
 import com.example.instaclone.ui.theme.screens.UploadScreen
+import com.example.instaclone.utils.GithubRelease
+import com.example.instaclone.utils.GithubUpdateChecker
 import io.appwrite.Client
+import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
@@ -95,6 +100,9 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge() // This tells the app to use the full screen, including under the status bar
         setContent {
+
+            AppUpdateCheck() // Check for update on app launch
+
             InstaCloneTheme(dynamicColor = false) { // Set dynamicColor to false for a consistent IG look
                 val view = LocalView.current
                 if (!view.isInEditMode) {
@@ -112,6 +120,44 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    @Composable
+    fun AppUpdateCheck() {
+
+        val scope = rememberCoroutineScope()
+        var availableUpdate by remember { mutableStateOf<GithubRelease?>(null) }
+
+        // Check for update on app launch
+        LaunchedEffect(Unit) {
+            scope.launch {
+                val update = GithubUpdateChecker.checkForUpdate(applicationContext)
+                if (update != null) {
+                    availableUpdate = update
+                }
+            }
+        }
+
+        // TEMPORARY FOR TESTING: Force dialog to show
+//        var availableUpdate by remember {
+//            mutableStateOf<GithubRelease?>(
+//                GithubRelease(
+//                    tagName = "v1.2",
+//                    releaseNotes = "- Added Reels support\n- Bug fixes",
+//                    htmlUrl = "https://github.com",
+//                    apkUrl = "https://github.com"
+//                )
+//            )
+//        }
+
+        // Show dialog if update is found
+        availableUpdate?.let { release ->
+            UpdateDialog(
+                release = release,
+                onDismiss = { availableUpdate = null }
+            )
+        }
+
     }
 }
 
@@ -385,4 +431,3 @@ fun AuthGatekeeper(
         content()
     }
 }
-
