@@ -56,9 +56,8 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun InstaCloneTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    darkTheme: Boolean = false, // <--- Force Light Mode (Instagram style)
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

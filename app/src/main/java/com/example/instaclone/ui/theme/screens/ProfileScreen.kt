@@ -447,7 +447,6 @@ fun ProfileHeader(
             )
         }
 
-
         // The Progress Bar
         if (isUpdating) {
             LinearProgressIndicator(

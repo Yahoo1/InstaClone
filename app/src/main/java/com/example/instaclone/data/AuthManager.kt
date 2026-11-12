@@ -1,7 +1,9 @@
 package com.example.instaclone.data
 
 import android.R.attr.password
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.mutableStateOf
 import com.example.instaclone.AppwriteConstants
 import io.appwrite.ID
@@ -496,5 +498,152 @@ class AuthManager(val client: io.appwrite.Client) { // Add 'val' here to make it
             false
         }
     }
+
+    // Send a direct message
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun sendMessage(recipientId: String, messageText: String): Boolean {
+        return try {
+            val myId = currentUserId.ifEmpty { account.get().id }
+            if (myId.isEmpty() || messageText.isBlank()) return false
+
+            val data = mapOf(
+                "senderId" to myId,
+                "recipientId" to recipientId,
+                "messageText" to messageText,
+                "createdAt" to java.time.Instant.now().toString(),
+                "isRead" to false // Unread by default
+            )
+
+            databases.createDocument(
+                databaseId = AppwriteConstants.DATABASE_ID,
+                collectionId = AppwriteConstants.MESSAGE_COLLECTION_ID, // Make sure you have a "messages" collection in Appwrite
+                documentId = io.appwrite.ID.unique(),
+                data = data
+            )
+            true
+        } catch (e: Exception) {
+            Log.e("AuthManager", "Send message failed: ${e.message}")
+            false
+        }
+    }
+
+    // Get messages between current user and other user
+    suspend fun getMessages(otherUserId: String): List<Message> {
+        return try {
+            val myId = currentUserId.ifEmpty { account.get().id }
+            if (myId.isEmpty()) return emptyList()
+
+            val response = databases.listDocuments(
+                databaseId = AppwriteConstants.DATABASE_ID,
+                collectionId = AppwriteConstants.MESSAGE_COLLECTION_ID,
+                queries = listOf(
+                    Query.limit(100)
+                )
+            )
+
+            val messages = response.documents.mapNotNull { doc ->
+                val id = doc.id
+                val senderId = doc.data["senderId"]?.toString() ?: ""
+                val recipientId = doc.data["recipientId"]?.toString() ?: ""
+                val messageText = doc.data["messageText"]?.toString() ?: ""
+                val createdAt = doc.data["createdAt"]?.toString() ?: ""
+                val isRead = doc.data["isRead"] as? Boolean ?: false
+
+                if ((senderId == myId && recipientId == otherUserId) || (senderId == otherUserId && recipientId == myId)) {
+                    // Mark incoming messages as read when viewed
+                    if (recipientId == myId && !isRead) {
+                        try {
+                            databases.updateDocument(
+                                databaseId = AppwriteConstants.DATABASE_ID,
+                                collectionId = AppwriteConstants.MESSAGE_COLLECTION_ID,
+                                documentId = id,
+                                data = mapOf("isRead" to true)
+                            )
+                        } catch (_: Exception) {}
+                    }
+                    Message(id, senderId, recipientId, messageText, createdAt, true)
+                } else {
+                    null
+                }
+            }.sortedBy { it.createdAt }
+            messages
+        } catch (e: Exception) {
+            Log.e("AuthManager", "Get messages failed: ${e.message}")
+            emptyList()
+        }
+    }
+
+    // Check if there are messages addressed to the current user
+    suspend fun hasNewMessages(): Boolean {
+        return try {
+            val myId = currentUserId.ifEmpty { account.get().id }
+            if (myId.isEmpty()) return false
+
+            val response = databases.listDocuments(
+                databaseId = AppwriteConstants.DATABASE_ID,
+                collectionId = AppwriteConstants.MESSAGE_COLLECTION_ID,
+                queries = listOf(
+                    Query.equal("recipientId", myId),
+                    Query.equal("isRead", false),
+                    Query.limit(1)
+                )
+            )
+            response.documents.isNotEmpty()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    // Get a set of user IDs who have sent unread messages to the current user
+    suspend fun getUnreadSenderIds(): Set<String> {
+        return try {
+            val myId = currentUserId.ifEmpty { account.get().id }
+            if (myId.isEmpty()) return emptySet()
+
+            val response = databases.listDocuments(
+                databaseId = AppwriteConstants.DATABASE_ID,
+                collectionId = AppwriteConstants.MESSAGE_COLLECTION_ID,
+                queries = listOf(
+                    Query.equal("recipientId", myId),
+                    Query.equal("isRead", false),
+                    Query.limit(100)
+                )
+            )
+            response.documents.mapNotNull { it.data["senderId"]?.toString() }.toSet()
+        } catch (e: Exception) {
+            emptySet()
+        }
+    }
+
+    // Get the latest unread message for notification purposes
+    suspend fun getLatestUnreadMessage(): Message? {
+        return try {
+            val myId = currentUserId.ifEmpty { account.get().id }
+            if (myId.isEmpty()) return null
+
+            val response = databases.listDocuments(
+                databaseId = AppwriteConstants.DATABASE_ID,
+                collectionId = AppwriteConstants.MESSAGE_COLLECTION_ID,
+                queries = listOf(
+                    Query.equal("recipientId", myId),
+                    Query.equal("isRead", false),
+                    Query.orderDesc("\$createdAt"),
+                    Query.limit(1)
+                )
+            )
+            val doc = response.documents.firstOrNull() ?: return null
+            Message(
+                id = doc.id,
+                senderId = doc.data["senderId"]?.toString() ?: "",
+                recipientId = doc.data["recipientId"]?.toString() ?: "",
+                messageText = doc.data["messageText"]?.toString() ?: "",
+                createdAt = doc.data["createdAt"]?.toString() ?: "",
+                isRead = doc.data["isRead"] as? Boolean ?: false
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
 
 }

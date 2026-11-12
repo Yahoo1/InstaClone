@@ -16,13 +16,10 @@ sealed class Screen(val route: String) {
     object PostDetails : Screen("details/{postId}") {
         fun createRoute(postId: String) = "details/$postId" // {postId} is a variable
     }
+    // NEW CHAT ROUTES
+    object ChatList : Screen("chat_list")
+    object ChatRoom : Screen("chat_room/{recipientId}/{recipientName}") {
+        fun createRoute(recipientId: String, recipientName: String) = "chat_room/$recipientId/$recipientName"
+    }
 }
 
-//původní před AI opravou
-//sealed class Screen(val route: String) {
-//    object Feed : Screen("feed")
-//    object Search : Screen("search")
-//    object AddPost : Screen("add_post")
-//    object Profile : Screen("profile")
-//    object PostDetails : Screen("details/{postId}") // {postId} is a variable
-//}

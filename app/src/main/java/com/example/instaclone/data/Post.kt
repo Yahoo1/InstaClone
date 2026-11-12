@@ -32,3 +32,13 @@ data class Comment(
     val text: String = "",
     val createdAt: String = ""
 )
+
+data class Message( //for Direct Messages (DMs / Chat)
+    val id: String,
+    val senderId: String,
+    val recipientId: String,
+    val messageText: String,
+    val createdAt: String,
+    val isRead: Boolean = false
+)
+

@@ -19,8 +19,8 @@ android {
         applicationId = "com.example.instaclone"
         minSdk = 24
         targetSdk = 35
-        versionCode = 2 // Increment by 1 every time (1, 2, 3...)
-        versionName = "1.1" // Your new version string
+        versionCode = 3 // Increment by 1 every time (1, 2, 3...)
+        versionName = "1.2" // Your new version string
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

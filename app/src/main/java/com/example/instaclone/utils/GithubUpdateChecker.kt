@@ -3,6 +3,7 @@ package com.example.instaclone.utils
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import com.example.instaclone.AppwriteConstants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -17,8 +18,8 @@ data class GithubRelease(
 )
 
 object GithubUpdateChecker {
-    private const val GITHUB_OWNER = "Yahoo1"
-    private const val GITHUB_REPO = "InstaClone"
+    private const val GITHUB_OWNER = AppwriteConstants.GITHUB_OWNER
+    private const val GITHUB_REPO = AppwriteConstants.GITHUB_REPO
 
     suspend fun checkForUpdate(context: Context): GithubRelease? = withContext(Dispatchers.IO) {
         try {

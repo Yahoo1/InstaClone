@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,7 +16,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Abc
 import androidx.compose.material.icons.filled.AddBox
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -35,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -69,6 +75,8 @@ import com.example.instaclone.data.SearchViewModelFactory
 import com.example.instaclone.data.UploadManager
 import com.example.instaclone.ui.theme.InstaCloneTheme
 import com.example.instaclone.ui.theme.screens.AddPostScreen
+import com.example.instaclone.ui.theme.screens.ChatListScreen
+import com.example.instaclone.ui.theme.screens.ChatRoomScreen
 import com.example.instaclone.ui.theme.screens.FeedScreen
 import com.example.instaclone.ui.theme.screens.LoginScreen
 import com.example.instaclone.ui.theme.screens.PostDetailScreen
@@ -89,6 +97,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        // Request Notification permission for Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+            }
+        }
 
         // 1. Initialize the client FIRST
         val client = Client(this)
@@ -272,10 +287,6 @@ fun AppNavHost(
         composable(Screen.AddPost.route) {
             AddPostScreen(navController, UploadManager(authManager, LocalContext.current))
         }
-//        composable(Screen.Profile.route) {
-//            val profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(authManager))
-//            ProfileScreen(navController = navController, authManager = authManager, viewModel = profileViewModel)
-//        }
         composable(
             route = Screen.Profile.route,
             arguments = listOf(navArgument("userId") { type = NavType.StringType; nullable = true; defaultValue = "" })
@@ -291,6 +302,25 @@ fun AppNavHost(
             )
 
             ProfileScreen(navController = navController, authManager = authManager, viewModel = profileViewModel, targetUserId = targetUserId)
+        }
+        composable(Screen.ChatList.route) {
+            ChatListScreen(navController = navController, authManager = authManager)
+        }
+        composable(
+            route = Screen.ChatRoom.route,
+            arguments = listOf(
+                navArgument("recipientId") { type = NavType.StringType },
+                navArgument("recipientName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val recipientId = backStackEntry.arguments?.getString("recipientId") ?: ""
+            val recipientName = backStackEntry.arguments?.getString("recipientName") ?: ""
+            ChatRoomScreen(
+                navController = navController,
+                authManager = authManager,
+                recipientId = recipientId,
+                recipientName = recipientName
+            )
         }
         composable(
             route = Screen.PostDetails.route,
@@ -333,6 +363,61 @@ fun MainScaffold(
                 // Keep this as statusBars so the bar actually sits UNDER the battery/clock
                 windowInsets = TopAppBarDefaults.windowInsets,
                 actions = {
+                    // DM / Chat icon with Notification Badge (Paper Airplane ikona)
+                    var hasUnread by remember { mutableStateOf(false) }
+                    val scope = rememberCoroutineScope()
+                    val context = LocalContext.current
+                    var lastNotifiedId by remember { mutableStateOf("") }
+
+                    // Real-time listener for unread messages badge & notifications
+                    DisposableEffect(Unit) {
+                        val realtime = io.appwrite.services.Realtime(authManager.client)
+                        val subscription = realtime.subscribe(
+                            "databases.${AppwriteConstants.DATABASE_ID}.collections.${AppwriteConstants.MESSAGE_COLLECTION_ID}.documents"
+                        ) { event ->
+                            scope.launch {
+                                hasUnread = authManager.hasNewMessages()
+                                val latest = authManager.getLatestUnreadMessage()
+                                if (latest != null && latest.id != lastNotifiedId && latest.senderId != authManager.currentUserId) {
+                                    lastNotifiedId = latest.id
+                                    com.example.instaclone.utils.NotificationUtils.showMessageNotification(
+                                        context = context,
+                                        senderName = "New Message",
+                                        messageText = latest.messageText
+                                    )
+                                }
+                            }
+                        }
+
+                        // Initial check on start
+                        scope.launch {
+                            hasUnread = authManager.hasNewMessages()
+                        }
+
+                        onDispose {
+                            try {
+                                subscription.close()
+                            } catch (e: Exception) {}
+                        }
+                    }
+
+                    Box(modifier = Modifier.padding(end = 4.dp)) {
+                        IconButton(onClick = { navController.navigate(Screen.ChatList.route) }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Direct Messages",
+                                tint = Color.Black
+                            )
+                        }
+                        if (hasUnread) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .background(Color.Red, CircleShape)
+                                    .align(Alignment.TopEnd)
+                            )
+                        }
+                    }
                     IconButton(onClick = { navController.navigate(Screen.Upload.route) }) {
                         Icon(
                             imageVector = Icons.Default.AddBox,
